@@ -72,7 +72,6 @@ class PaymentMethod
         $paymentRequest->setShippingCost(number_format($this->getShippingAmount(), 2, '.', '')); //Shipping Coast
 
         try {
-
             return $paymentRequest->register(
                 $this->_library->getPagSeguroCredentials(),
                 $this->_library->isLightboxCheckoutType()
@@ -110,8 +109,16 @@ class PaymentMethod
     private function getSenderInformation()
     {
         $sender = new \PagSeguroSender();
-        $sender->setEmail($this->_checkoutSession->getLastRealOrder()->getCustomerEmail());
-        $sender->setName($this->_checkoutSession->getLastRealOrder()->getCustomerName());
+        $customerName = $this->_checkoutSession->getLastRealOrder()->getCustomerName();
+        $customerEmail = $this->_checkoutSession->getLastRealOrder()->getCustomerEmail();
+
+        if ($customerName == 'Guest') {
+            $address = $this->getBillingAddress();
+            $customerName = $address->getFirstname().' '.$address->getLastname();
+        }
+
+        $sender->setEmail($customerEmail);
+        $sender->setName($customerName);
         return $sender;
     }
 
@@ -147,13 +154,22 @@ class PaymentMethod
     }
 
     /**
+     * Get the billing address data of the Order
+     * @return \Magento\Sales\Model\Order\Address|null
+     */
+    private function getBillingAddress()
+    {
+        return $this->_checkoutSession->getLastRealOrder()->getBillingAddress();
+    }
+
+    /**
      * Get the shipping Data of the Order
      * @return object $orderParams - Return parameters, of shipping of order
      */
     private function getShippingData()
     {
         if ($this->_checkoutSession->getLastRealOrder()->getIsVirtual()) {
-            return $this->_checkoutSession->getLastRealOrder()->getBillingAddress();
+            return $this->getBillingAddress();
         }
         return $this->_checkoutSession->getLastRealOrder()->getShippingAddress();
     }
